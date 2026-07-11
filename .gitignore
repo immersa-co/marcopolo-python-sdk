@@ -3,13 +3,9 @@
 ADR.md
 MANUAL_VALIDATION.md
 .MANUAL_VALIDATION.md.swp
+.beads/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.pyc
 *.swp
-.beads/*.db
-.beads/*.db-wal
-.beads/*.lock
-.beads/.br_history/
-.beads/last-touched
