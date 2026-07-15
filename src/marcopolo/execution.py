@@ -1,4 +1,4 @@
-"""Execution helpers for running remote MarcoPolo query files."""
+"""Execution helpers for running remote MarcoPolo connection commands."""
 
 from __future__ import annotations
 
@@ -17,6 +17,29 @@ class ExecutionResult:
     rows: list[dict[str, Any]]
     row_count: int
     run_id: str | None
+    raw_payload: dict[str, Any]
+    raw_command_result: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class ConnectionSummary:
+    """Normalized metadata for one MarcoPolo connection."""
+
+    name: str
+    connection_type: str
+    capabilities: list[str]
+    display_name: str | None
+    workspace_path: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ConnectionListResult:
+    """Normalized result from a MarcoPolo `connection list` execution."""
+
+    connections: list[ConnectionSummary]
+    count: int
+    message: str | None
+    next_actions: list[str]
     raw_payload: dict[str, Any]
     raw_command_result: dict[str, Any]
 
@@ -48,6 +71,12 @@ def build_connection_query_command(
     return " ".join(command_parts)
 
 
+def build_connection_list_command() -> str:
+    """Build a `connection list` CLI invocation."""
+
+    return "connection list --json"
+
+
 def parse_workspace_shell_query_result(
     tool_result: Any,
     *,
@@ -57,25 +86,11 @@ def parse_workspace_shell_query_result(
     """Normalize a `workspace_shell` result for `connection query --json`."""
 
     command_result = _structured_mapping(tool_result)
-    stdout = (command_result.get("stdout") or "").strip()
-
-    if not command_result.get("success"):
-        raise ExecutionError(
-            _command_error_message(command_result, stdout)
-            or f"Failed to execute query for connection '{connection_name}'."
-        )
-    if not stdout:
-        raise ExecutionError(
-            f"Query on connection '{connection_name}' produced no output."
-        )
-
-    try:
-        payload = json.loads(stdout)
-    except json.JSONDecodeError as exc:
-        raise ExecutionError("Command returned non-JSON stdout.") from exc
-
-    if not isinstance(payload, dict):
-        raise ExecutionError("Command returned a non-object JSON payload.")
+    payload = _parse_command_payload(
+        command_result,
+        empty_output_message=f"Query on connection '{connection_name}' produced no output.",
+        failure_message=f"Failed to execute query for connection '{connection_name}'.",
+    )
     if payload.get("success") is False:
         raise ExecutionError(
             (
@@ -103,6 +118,73 @@ def parse_workspace_shell_query_result(
         rows=rows,
         row_count=row_count,
         run_id=payload.get("run_id") if isinstance(payload.get("run_id"), str) else None,
+        raw_payload=payload,
+        raw_command_result=command_result,
+    )
+
+
+def parse_workspace_shell_connection_list_result(tool_result: Any) -> ConnectionListResult:
+    """Normalize a `workspace_shell` result for `connection list --json`."""
+
+    command_result = _structured_mapping(tool_result)
+    payload = _parse_command_payload(
+        command_result,
+        empty_output_message="Connection list command produced no output.",
+        failure_message="Failed to list connections.",
+    )
+    if payload.get("success") is False:
+        raise ExecutionError(
+            (
+                payload.get("message")
+                or payload.get("error")
+                or "Failed to list connections."
+            )
+        )
+
+    connections: list[ConnectionSummary] = []
+    for item in payload.get("connections") or []:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        connection_type = item.get("type")
+        if not isinstance(name, str) or not isinstance(connection_type, str):
+            continue
+        capabilities = [
+            capability
+            for capability in item.get("capabilities") or []
+            if isinstance(capability, str)
+        ]
+        display_name = (
+            item.get("display_name")
+            if isinstance(item.get("display_name"), str)
+            else None
+        )
+        workspace_path = (
+            item.get("workspace_path")
+            if isinstance(item.get("workspace_path"), str)
+            else None
+        )
+        connections.append(
+            ConnectionSummary(
+                name=name,
+                connection_type=connection_type,
+                capabilities=capabilities,
+                display_name=display_name,
+                workspace_path=workspace_path,
+            )
+        )
+
+    count = payload.get("count") if isinstance(payload.get("count"), int) else len(connections)
+    message = payload.get("message") if isinstance(payload.get("message"), str) else None
+    next_actions = [
+        action for action in payload.get("next_actions") or [] if isinstance(action, str)
+    ]
+
+    return ConnectionListResult(
+        connections=connections,
+        count=count,
+        message=message,
+        next_actions=next_actions,
         raw_payload=payload,
         raw_command_result=command_result,
     )
@@ -138,6 +220,32 @@ def _structured_mapping(tool_result: Any) -> dict[str, Any]:
             return dumped
 
     raise ExecutionError("Tool returned an unsupported result shape.")
+
+
+def _parse_command_payload(
+    command_result: dict[str, Any],
+    *,
+    empty_output_message: str,
+    failure_message: str,
+) -> dict[str, Any]:
+    stdout = (command_result.get("stdout") or "").strip()
+
+    if not command_result.get("success"):
+        raise ExecutionError(
+            _command_error_message(command_result, stdout) or failure_message
+        )
+    if not stdout:
+        raise ExecutionError(empty_output_message)
+
+    try:
+        payload = json.loads(stdout)
+    except json.JSONDecodeError as exc:
+        raise ExecutionError("Command returned non-JSON stdout.") from exc
+
+    if not isinstance(payload, dict):
+        raise ExecutionError("Command returned a non-object JSON payload.")
+
+    return payload
 
 
 def _command_error_message(command_result: dict[str, Any], stdout: str) -> str | None:

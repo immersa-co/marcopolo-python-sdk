@@ -5,6 +5,7 @@ operations from application code.
 
 The initial public surface is intentionally small:
 
+- one async metadata API: `list_connections()`
 - one async top-level API: `execute()`
 - one async lower-level helper: `execute_query_file()`
 - internal handling for remote query-file authoring under
@@ -16,14 +17,12 @@ The low-level MCP transport uses the official Python `mcp` SDK.
 
 This repository implements the approved first cut of the client:
 
+- async connection discovery
 - async-only execution
 - required `context`
 - caller-provided `query_name`
 - syntax-agnostic payload handling
 - canonical execution through `workspace_shell("connection query ... --json")`
-
-Architectural decisions are tracked in [ADR.md](ADR.md). Live validated
-examples and connector notes are tracked in [MANUAL_VALIDATION.md](MANUAL_VALIDATION.md).
 
 ## Install
 
@@ -49,6 +48,22 @@ marcopolo = MarcoPolo(
     server_url=os.environ["MARCOPOLO_MCP_SERVER_URL"],
 )
 ```
+
+### `list_connections()`
+
+```python
+async def list_connections(
+    *,
+    context: str,
+    timeout: int | None = None,
+) -> ConnectionListResult
+```
+
+Behavior:
+
+- executes `workspace_shell("connection list --json")`
+- parses the returned shell payload and nested JSON `stdout`
+- returns normalized connection metadata including capabilities
 
 ### `execute()`
 
@@ -130,6 +145,12 @@ async def main() -> None:
         api_token=os.environ["MARCOPOLO_API_TOKEN"],
         server_url=os.environ["MARCOPOLO_MCP_SERVER_URL"],
     )
+    connections = await marcopolo.list_connections(
+        context="List available governed connections before choosing one.",
+    )
+    print(connections.count)
+    print(connections.connections[:2])
+
     result = await marcopolo.execute(
         "jira-jql-20260710-1527",
         {
@@ -266,6 +287,31 @@ Notes:
 - write operations may still return useful rows, such as Salesforce create
   responses with inserted record IDs
 - `raw_payload` and `raw_command_result` are preserved for debugging
+
+`list_connections()` returns `ConnectionListResult`:
+
+```python
+ConnectionListResult(
+    connections: list[ConnectionSummary],
+    count: int,
+    message: str | None,
+    next_actions: list[str],
+    raw_payload: dict[str, Any],
+    raw_command_result: dict[str, Any],
+)
+```
+
+Where each `ConnectionSummary` includes:
+
+```python
+ConnectionSummary(
+    name: str,
+    connection_type: str,
+    capabilities: list[str],
+    display_name: str | None,
+    workspace_path: str | None,
+)
+```
 
 ## Observed Result Shapes
 

@@ -5,8 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from marcopolo.execution import (
+    ConnectionListResult,
     ExecutionResult,
+    build_connection_list_command,
     build_connection_query_command,
+    parse_workspace_shell_connection_list_result,
     parse_workspace_shell_query_result,
 )
 from marcopolo.mcp_transport import MarcoPoloMCPTransport
@@ -100,3 +103,19 @@ class MarcoPolo:
             connection_name=connection_name,
             query_file=query_file,
         )
+
+    async def list_connections(
+        self,
+        *,
+        context: str,
+        timeout: int | None = None,
+    ) -> ConnectionListResult:
+        """List available MarcoPolo connections through `connection list`."""
+
+        transport = self.transport()
+        tool_result = await transport.workspace_shell(
+            command=build_connection_list_command(),
+            context=context,
+            timeout=timeout,
+        )
+        return parse_workspace_shell_connection_list_result(tool_result)

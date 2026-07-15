@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from marcopolo import ExecutionResult, MarcoPolo
+from marcopolo import ConnectionListResult, ExecutionResult, MarcoPolo
 
 
 def _require_env(name: str) -> str:
@@ -44,4 +44,13 @@ def print_execution_details(
         print(json.dumps(payload, indent=2, sort_keys=True), flush=True)
 
     print(f"=== {test_name} response ===", flush=True)
+    print(json.dumps(result.raw_payload, indent=2, sort_keys=True, default=str), flush=True)
+
+
+def print_connection_list_details(
+    *,
+    test_name: str,
+    result: ConnectionListResult,
+) -> None:
+    print(f"\n=== {test_name} response ===", flush=True)
     print(json.dumps(result.raw_payload, indent=2, sort_keys=True, default=str), flush=True)

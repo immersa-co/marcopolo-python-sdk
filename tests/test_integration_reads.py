@@ -1,7 +1,28 @@
 import pytest
 
 from marcopolo import MarcoPolo
-from tests.live_support import print_execution_details
+from tests.live_support import print_connection_list_details, print_execution_details
+
+
+@pytest.mark.asyncio
+async def test_list_connections(live_client: MarcoPolo) -> None:
+    result = await live_client.list_connections(
+        context=(
+            "Running a live connection list integration test "
+            "through the MarcoPolo client library."
+        ),
+        timeout=180,
+    )
+    print_connection_list_details(
+        test_name="test_list_connections",
+        result=result,
+    )
+
+    assert result.count >= 1
+    assert result.connections
+    assert len(result.connections) == result.count
+    assert any(connection.name == "local_files" for connection in result.connections)
+    assert any("query" in connection.capabilities for connection in result.connections)
 
 
 @pytest.mark.asyncio
