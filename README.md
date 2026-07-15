@@ -30,6 +30,17 @@ This repository implements the approved first cut of the client:
 python3 -m pip install -e ".[dev]"
 ```
 
+## Build Wheel
+
+Build a wheel for private distribution:
+
+```bash
+python3 -m pip install -e ".[dev]"
+python3 -m build --wheel
+```
+
+The built artifact will be written under `dist/`.
+
 ## Configuration
 
 `MarcoPolo` does not read `.env` files or process environment variables.
