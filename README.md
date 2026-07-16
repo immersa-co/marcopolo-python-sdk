@@ -26,20 +26,42 @@ This repository implements the approved first cut of the client:
 
 ## Install
 
+Install from PyPI:
+
+```bash
+python3 -m pip install marcopolo-sdk
+```
+
+Install for local development:
+
 ```bash
 python3 -m pip install -e ".[dev]"
 ```
 
-## Build Wheel
+## Build Release Artifacts
 
-Build a wheel for private distribution:
+Build and validate the PyPI release artifacts locally:
 
 ```bash
 python3 -m pip install -e ".[dev]"
-python3 -m build --wheel
+python3 -m build
+python3 -m twine check dist/*
 ```
 
-The built artifact will be written under `dist/`.
+The built source distribution and wheel are written under `dist/`.
+
+## Publish to PyPI
+
+This repository is set up for GitHub Actions based PyPI trusted publishing.
+
+High-level flow:
+
+1. Configure the one-time trusted publisher on PyPI for this repository.
+2. Push a version tag such as `v0.1.1`.
+3. Create a GitHub release from that tag.
+4. The `publish-pypi.yml` workflow builds the package and uploads it to PyPI.
+
+See [`PYPI_PUBLISHING.md`](PYPI_PUBLISHING.md) for the concrete setup steps.
 
 ## Configuration
 

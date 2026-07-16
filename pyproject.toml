@@ -12,10 +12,13 @@ license = { text = "Proprietary" }
 authors = [
   { name = "Immersa" },
 ]
+urls = { Homepage = "https://github.com/immersa-co/marcopolo-python-sdk", Repository = "https://github.com/immersa-co/marcopolo-python-sdk", Issues = "https://github.com/immersa-co/marcopolo-python-sdk/issues" }
 keywords = ["marcopolo", "mcp", "client", "data"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Typing :: Typed",
 ]
 dependencies = [
@@ -27,10 +30,18 @@ dev = [
   "build>=1.2.2",
   "pytest>=8.3.0",
   "ruff>=0.5.0",
+  "twine>=5.1.1",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/marcopolo"]
+
+[tool.hatch.build]
+exclude = [
+  ".venv*/",
+  "build/",
+  "dist/",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
