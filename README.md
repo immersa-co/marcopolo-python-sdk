@@ -8,6 +8,10 @@ The initial public surface is intentionally small:
 - one async metadata API: `list_connections()`
 - one async top-level API: `execute()`
 - one async lower-level helper: `execute_query_file()`
+- one async helper to install a hosted demo source: `install_demo_connection()`
+- one async helper to start a native connection workflow: `start_connection_setup()`
+- one async helper to run arbitrary workspace commands: `workspace_shell()`
+- one async helper to read text resources: `read_resource_text()`
 - internal handling for remote query-file authoring under
   `connections/<connection_name>/queries/`
 
@@ -23,6 +27,7 @@ This repository implements the approved first cut of the client:
 - caller-provided `query_name`
 - syntax-agnostic payload handling
 - canonical execution through `workspace_shell("connection query ... --json")`
+- typed convenience wrappers for common MarcoPolo MCP tools
 
 ## Install
 
@@ -57,7 +62,7 @@ This repository is set up for GitHub Actions based PyPI trusted publishing.
 High-level flow:
 
 1. Configure the one-time trusted publisher on PyPI for this repository.
-2. Push a version tag such as `v0.1.1`.
+2. Push a version tag such as `v0.2.0`.
 3. Create a GitHub release from that tag.
 4. The `publish-pypi.yml` workflow builds the package and uploads it to PyPI.
 
@@ -137,6 +142,54 @@ async def execute_query_file(
 Use this when the query file already exists in the MarcoPolo workspace and you
 only want execution.
 
+### `install_demo_connection()`
+
+```python
+async def install_demo_connection(
+    demo_connection: str,
+    *,
+    intent_text: str | None = None,
+) -> DemoConnectionInstallResult
+```
+
+Use this to install a hosted demo source such as Salesforce into the
+authenticated workspace.
+
+### `start_connection_setup()`
+
+```python
+async def start_connection_setup(
+    connection_type: str,
+    *,
+    context: str,
+) -> ConnectionSetupResult
+```
+
+Use this to launch a native MarcoPolo connection setup workflow for a given
+connector type.
+
+### `workspace_shell()`
+
+```python
+async def workspace_shell(
+    command: str,
+    *,
+    context: str,
+    timeout: int | None = None,
+) -> WorkspaceShellResult
+```
+
+Use this when you want typed access to the raw `workspace_shell` MCP tool
+without manually dealing with `CallToolResult`.
+
+### `read_resource_text()`
+
+```python
+async def read_resource_text(uri: str) -> ResourceTextResult
+```
+
+Use this to read text resources such as MCP app HTML documents.
+
 ## Payload Rules
 
 The client is syntax-agnostic. It does not read connector `SYNTAX.md` files or
@@ -173,6 +226,19 @@ import os
 from marcopolo import MarcoPolo
 
 
+async def resolve_first_connection_name_by_type(
+    marcopolo: MarcoPolo,
+    connection_type: str,
+) -> str:
+    connections = await marcopolo.list_connections(
+        context=f"Resolve a {connection_type} connection before execution.",
+    )
+    for connection in connections.connections:
+        if connection.connection_type == connection_type:
+            return connection.name
+    raise RuntimeError(f"No {connection_type} connection is available.")
+
+
 async def main() -> None:
     marcopolo = MarcoPolo(
         api_token=os.environ["MARCOPOLO_API_TOKEN"],
@@ -184,8 +250,9 @@ async def main() -> None:
     print(connections.count)
     print(connections.connections[:2])
 
+    jira_connection = await resolve_first_connection_name_by_type(marcopolo, "jira")
     result = await marcopolo.execute(
-        "jira-jql-20260710-1527",
+        jira_connection,
         {
             "jql": (
                 "assignee = currentUser() "
@@ -214,15 +281,18 @@ asyncio.run(main())
 
 ### Google Drive read
 
-Validated live against `google-drive-20260710-1517` and covered by
-`tests/test_integration_reads.py::test_execute_google_drive_sheet_read`.
-For the current connection scope, the working form is the plain display name
-`sales-by-quarter`; a folder-qualified path such as
-`some-folder/sales-by-quarter` does not resolve.
+Resolve the first `google_drive` connection at runtime. For the current
+validated connection scope, the working form is the plain display name
+`sales-by-quarter`; a folder-qualified path such as `some-folder/sales-by-quarter`
+does not resolve.
 
 ```python
+google_drive_connection = await resolve_first_connection_name_by_type(
+    marcopolo,
+    "google_drive",
+)
 result = await marcopolo.execute(
-    "google-drive-20260710-1517",
+    google_drive_connection,
     {
         "file": "sales-by-quarter",
         "sheet": "0",
@@ -235,8 +305,12 @@ result = await marcopolo.execute(
 ### Loki read
 
 ```python
+loki_connection = await resolve_first_connection_name_by_type(
+    marcopolo,
+    "grafana_loki",
+)
 result = await marcopolo.execute(
-    "grafana-loki-20260519-2152",
+    loki_connection,
     {
         "operation": "query_range",
         "query": '{job=~".+"} |~ "(?i)error"',
@@ -253,8 +327,12 @@ result = await marcopolo.execute(
 ### Salesforce update
 
 ```python
+salesforce_connection = await resolve_first_connection_name_by_type(
+    marcopolo,
+    "salesforce",
+)
 result = await marcopolo.execute(
-    "salesforce-demo-3841cee8-20260709-2149",
+    salesforce_connection,
     {
         "endpoint": "/services/data/v47.0/sobjects/Account/001gK00000DFg5tQAD",
         "method": "PATCH",
@@ -271,7 +349,7 @@ result = await marcopolo.execute(
 
 ```python
 result = await marcopolo.execute(
-    "salesforce-demo-3841cee8-20260709-2149",
+    salesforce_connection,
     {
         "endpoint": "/services/data/v47.0/sobjects/Opportunity",
         "method": "POST",
@@ -290,9 +368,13 @@ result = await marcopolo.execute(
 ### Execute an existing remote query file
 
 ```python
+google_drive_connection = await resolve_first_connection_name_by_type(
+    marcopolo,
+    "google_drive",
+)
 result = await marcopolo.execute_query_file(
-    "google-drive-20260710-1517",
-    "connections/google-drive-20260710-1517/queries/sales_by_quarter_sheet0.json",
+    google_drive_connection,
+    f"connections/{google_drive_connection}/queries/sales_by_quarter_sheet0.json",
     context="Execute a pre-authored Google Drive query file.",
 )
 ```
@@ -433,10 +515,7 @@ result.rows == []
     "preview": "[{\"id\":\"006gK00000KlbtRQAR\",\"success\":true,\"errors\":\"[]\"}]",
     "row_count": 1,
     "run_id": "run_123",
-    "query_file": (
-        "connections/salesforce-demo-3841cee8-20260709-2149/"
-        "queries/create_example_opportunity.json"
-    ),
+    "query_file": "connections/<connection_name>/queries/create_example_opportunity.json",
 }
 ```
 
@@ -454,13 +533,14 @@ Run tests:
 pytest -q
 ```
 
-The test suite is live-only. Before running it, load these variables into your
-shell by whatever mechanism your environment uses:
+That default run excludes live integration coverage. To run the real MarcoPolo
+environment tests, load these variables into your shell by whatever mechanism
+your environment uses and opt into the `live` marker explicitly:
 
 ```bash
 export MARCOPOLO_API_TOKEN=...
 export MARCOPOLO_MCP_SERVER_URL=...
-pytest -q -s
+pytest -q -m live -s
 ```
 
 ## Current Limitations

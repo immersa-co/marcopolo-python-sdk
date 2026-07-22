@@ -1,15 +1,16 @@
-"""Internal remote query-file authoring utilities."""
+"""Query-file preparation and authoring helpers."""
 
 from __future__ import annotations
 
-import base64
 import json
 import re
-from dataclasses import dataclass
 from pathlib import PurePosixPath
-from typing import Any, Literal, Protocol
+from typing import Any, Protocol
 
-PayloadFormat = Literal["json", "sql", "text"]
+from marcopolo.commands import build_remote_write_command
+from marcopolo.errors import QueryFileAuthoringError
+from marcopolo.models import AuthoredQueryFile, PayloadFormat, PreparedQueryFile
+
 _VALID_PAYLOAD_FORMATS = {"json", "sql", "text"}
 
 
@@ -20,29 +21,6 @@ class SupportsWorkspaceShell(Protocol):
         self, command: str, context: str, timeout: int | None = None
     ) -> Any:
         """Run a command in the MarcoPolo workspace."""
-
-
-@dataclass(frozen=True, slots=True)
-class PreparedQueryFile:
-    """Locally prepared query-file metadata before remote write."""
-
-    connection_name: str
-    query_file: str
-    payload_format: PayloadFormat
-    content: str
-
-
-@dataclass(frozen=True, slots=True)
-class AuthoredQueryFile:
-    """Remote query-file metadata after workspace persistence."""
-
-    connection_name: str
-    query_file: str
-    payload_format: PayloadFormat
-
-
-class QueryFileAuthoringError(ValueError):
-    """Raised when payload serialization choices are ambiguous or invalid."""
 
 
 class MarcoPoloQueryFileAuthor:
@@ -118,7 +96,7 @@ class MarcoPoloQueryFileAuthor:
             payload_format=payload_format,
         )
         await self._transport.workspace_shell(
-            command=_build_remote_write_command(prepared),
+            command=build_remote_write_command(prepared),
             context=context,
             timeout=timeout,
         )
@@ -149,22 +127,3 @@ def _extension_for(payload_format: PayloadFormat) -> str:
         "sql": "sql",
         "text": "txt",
     }[payload_format]
-
-
-def _build_remote_write_command(prepared: PreparedQueryFile) -> str:
-    """Build a shell-safe command that writes content in `/workspace`."""
-
-    encoded = base64.b64encode(prepared.content.encode("utf-8")).decode("ascii")
-    return "\n".join(
-        [
-            "python3 - <<'PY'",
-            "from pathlib import Path",
-            "import base64",
-            f"path = Path('/workspace/{prepared.query_file}')",
-            f"content = base64.b64decode('{encoded}')",
-            "path.parent.mkdir(parents=True, exist_ok=True)",
-            "path.write_bytes(content)",
-            "print(path.as_posix())",
-            "PY",
-        ]
-    )

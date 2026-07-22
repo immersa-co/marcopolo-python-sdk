@@ -1,8 +1,14 @@
 import pytest
 
 from marcopolo import MarcoPolo
-from tests.live_support import print_connection_list_details, print_execution_details
+from tests.live_support import (
+    build_query_file_path,
+    print_connection_list_details,
+    print_execution_details,
+    resolve_first_connection_name_by_type,
+)
 
+pytestmark = pytest.mark.live
 
 @pytest.mark.asyncio
 async def test_list_connections(live_client: MarcoPolo) -> None:
@@ -27,6 +33,10 @@ async def test_list_connections(live_client: MarcoPolo) -> None:
 
 @pytest.mark.asyncio
 async def test_execute_jira_open_tickets_read(live_client: MarcoPolo) -> None:
+    connection_name = await resolve_first_connection_name_by_type(
+        live_client,
+        "jira",
+    )
     payload = {
         "jql": (
             "assignee = currentUser() "
@@ -44,7 +54,7 @@ async def test_execute_jira_open_tickets_read(live_client: MarcoPolo) -> None:
         ],
     }
     result = await live_client.execute(
-        "jira-jql-20260710-1527",
+        connection_name,
         payload,
         query_name="integration_jira_open_tickets_current_user",
         context="Running a live Jira read integration test through the MarcoPolo client library.",
@@ -52,25 +62,67 @@ async def test_execute_jira_open_tickets_read(live_client: MarcoPolo) -> None:
     )
     print_execution_details(
         test_name="test_execute_jira_open_tickets_read",
-        connection_name="jira-jql-20260710-1527",
+        connection_name=connection_name,
         payload=payload,
         result=result,
     )
 
-    assert result.connection_name == "jira-jql-20260710-1527"
+    assert result.connection_name == connection_name
     assert result.query_file.endswith("integration_jira_open_tickets_current_user.json")
     if result.rows:
         assert "key" in result.rows[0]
         assert "summary" in result.rows[0]
 
+
+@pytest.mark.asyncio
+async def test_execute_salesforce_top_accounts_read(live_client: MarcoPolo) -> None:
+    connection_name = await resolve_first_connection_name_by_type(
+        live_client,
+        "salesforce",
+    )
+
+    payload = {
+        "soql": (
+            "SELECT Id, Name, AnnualRevenue, Industry "
+            "FROM Account WHERE AnnualRevenue != NULL "
+            "ORDER BY AnnualRevenue DESC LIMIT 5"
+        ),
+    }
+    result = await live_client.execute(
+        connection_name,
+        payload,
+        query_name="integration_salesforce_top_5_accounts_by_revenue",
+        context=(
+            "Running a live Salesforce read integration test "
+            "through the MarcoPolo client library."
+        ),
+        timeout=180,
+    )
+    print_execution_details(
+        test_name="test_execute_salesforce_top_accounts_read",
+        connection_name=connection_name,
+        payload=payload,
+        result=result,
+    )
+
+    assert result.connection_name == connection_name
+    assert result.query_file.endswith("integration_salesforce_top_5_accounts_by_revenue.json")
+    assert result.row_count >= 1
+    assert result.rows
+    assert {"Id", "Name", "AnnualRevenue", "Industry"} <= set(result.rows[0])
+
 @pytest.mark.asyncio
 async def test_execute_google_drive_sheet_read(live_client: MarcoPolo) -> None:
+    connection_name = await resolve_first_connection_name_by_type(
+        live_client,
+        "google_drive",
+    )
     payload = {
         "file": "sales-by-quarter",
         "sheet": "0",
     }
     result = await live_client.execute(
-        "google-drive-20260710-1517",
+        connection_name,
         payload,
         query_name="integration_google_drive_sales_by_quarter",
         context=(
@@ -81,12 +133,12 @@ async def test_execute_google_drive_sheet_read(live_client: MarcoPolo) -> None:
     )
     print_execution_details(
         test_name="test_execute_google_drive_sheet_read",
-        connection_name="google-drive-20260710-1517",
+        connection_name=connection_name,
         payload=payload,
         result=result,
     )
 
-    assert result.connection_name == "google-drive-20260710-1517"
+    assert result.connection_name == connection_name
     assert result.query_file.endswith("integration_google_drive_sales_by_quarter.json")
     assert result.row_count >= 1
     assert result.rows
@@ -94,6 +146,10 @@ async def test_execute_google_drive_sheet_read(live_client: MarcoPolo) -> None:
 
 @pytest.mark.asyncio
 async def test_execute_loki_error_read(live_client: MarcoPolo) -> None:
+    connection_name = await resolve_first_connection_name_by_type(
+        live_client,
+        "grafana_loki",
+    )
     payload = {
         "operation": "query_range",
         "query": '{job=~".+"} |~ "(?i)error"',
@@ -103,7 +159,7 @@ async def test_execute_loki_error_read(live_client: MarcoPolo) -> None:
         "direction": "backward",
     }
     result = await live_client.execute(
-        "grafana-loki-20260519-2152",
+        connection_name,
         payload,
         query_name="integration_loki_errors_last_24h",
         context="Running a live Loki read integration test through the MarcoPolo client library.",
@@ -111,12 +167,12 @@ async def test_execute_loki_error_read(live_client: MarcoPolo) -> None:
     )
     print_execution_details(
         test_name="test_execute_loki_error_read",
-        connection_name="grafana-loki-20260519-2152",
+        connection_name=connection_name,
         payload=payload,
         result=result,
     )
 
-    assert result.connection_name == "grafana-loki-20260519-2152"
+    assert result.connection_name == connection_name
     assert result.query_file.endswith("integration_loki_errors_last_24h.json")
     if result.rows:
         assert "timestamp" in result.rows[0]
@@ -125,9 +181,17 @@ async def test_execute_loki_error_read(live_client: MarcoPolo) -> None:
 
 @pytest.mark.asyncio
 async def test_execute_existing_query_file(live_client: MarcoPolo) -> None:
+    connection_name = await resolve_first_connection_name_by_type(
+        live_client,
+        "google_drive",
+    )
+    query_file = build_query_file_path(
+        connection_name,
+        "clientlib/sales_by_quarter_sheet0.json",
+    )
     result = await live_client.execute_query_file(
-        "google-drive-20260710-1517",
-        "connections/google-drive-20260710-1517/queries/clientlib/sales_by_quarter_sheet0.json",
+        connection_name,
+        query_file,
         context=(
             "Running a live execute_query_file integration test "
             "through the MarcoPolo client library."
@@ -136,12 +200,12 @@ async def test_execute_existing_query_file(live_client: MarcoPolo) -> None:
     )
     print_execution_details(
         test_name="test_execute_existing_query_file",
-        connection_name="google-drive-20260710-1517",
+        connection_name=connection_name,
         payload=None,
         result=result,
     )
 
-    assert result.connection_name == "google-drive-20260710-1517"
+    assert result.connection_name == connection_name
     assert result.query_file.endswith("clientlib/sales_by_quarter_sheet0.json")
     assert result.row_count >= 1
     assert result.rows

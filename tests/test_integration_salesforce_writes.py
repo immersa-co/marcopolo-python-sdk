@@ -5,11 +5,20 @@ from datetime import UTC, datetime
 import pytest
 
 from marcopolo import MarcoPolo
-from tests.live_support import print_execution_details
+from tests.live_support import (
+    print_execution_details,
+    resolve_first_connection_name_by_type,
+)
+
+pytestmark = pytest.mark.live
 
 
 @pytest.mark.asyncio
 async def test_execute_salesforce_account_update(live_client: MarcoPolo) -> None:
+    connection_name = await resolve_first_connection_name_by_type(
+        live_client,
+        "salesforce",
+    )
     payload = {
         "endpoint": "/services/data/v47.0/sobjects/Account/001gK00000DFg5tQAD",
         "method": "PATCH",
@@ -18,7 +27,7 @@ async def test_execute_salesforce_account_update(live_client: MarcoPolo) -> None
         },
     }
     result = await live_client.execute(
-        "salesforce-demo-3841cee8-20260709-2149",
+        connection_name,
         payload,
         query_name="integration_salesforce_update_account_description",
         context=(
@@ -29,12 +38,12 @@ async def test_execute_salesforce_account_update(live_client: MarcoPolo) -> None
     )
     print_execution_details(
         test_name="test_execute_salesforce_account_update",
-        connection_name="salesforce-demo-3841cee8-20260709-2149",
+        connection_name=connection_name,
         payload=payload,
         result=result,
     )
 
-    assert result.connection_name == "salesforce-demo-3841cee8-20260709-2149"
+    assert result.connection_name == connection_name
     assert result.query_file.endswith("integration_salesforce_update_account_description.json")
     assert result.row_count >= 0
 
@@ -43,6 +52,10 @@ async def test_execute_salesforce_account_update(live_client: MarcoPolo) -> None
 async def test_execute_salesforce_opportunity_insert_with_cleanup(
     live_client: MarcoPolo,
 ) -> None:
+    connection_name = await resolve_first_connection_name_by_type(
+        live_client,
+        "salesforce",
+    )
     suffix = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     payload = {
         "endpoint": "/services/data/v47.0/sobjects/Opportunity",
@@ -55,7 +68,7 @@ async def test_execute_salesforce_opportunity_insert_with_cleanup(
         },
     }
     create_result = await live_client.execute(
-        "salesforce-demo-3841cee8-20260709-2149",
+        connection_name,
         payload,
         query_name="integration_salesforce_create_test_opportunity",
         context=(
@@ -66,7 +79,7 @@ async def test_execute_salesforce_opportunity_insert_with_cleanup(
     )
     print_execution_details(
         test_name="test_execute_salesforce_opportunity_insert_with_cleanup",
-        connection_name="salesforce-demo-3841cee8-20260709-2149",
+        connection_name=connection_name,
         payload=payload,
         result=create_result,
     )
@@ -76,7 +89,7 @@ async def test_execute_salesforce_opportunity_insert_with_cleanup(
     assert create_result.rows[0]["success"] is True
 
     try:
-        assert create_result.connection_name == "salesforce-demo-3841cee8-20260709-2149"
+        assert create_result.connection_name == connection_name
         assert created_id.startswith("006")
         assert create_result.query_file.endswith(
             "integration_salesforce_create_test_opportunity.json"
@@ -87,7 +100,7 @@ async def test_execute_salesforce_opportunity_insert_with_cleanup(
             "method": "DELETE",
         }
         cleanup_result = await live_client.execute(
-            "salesforce-demo-3841cee8-20260709-2149",
+            connection_name,
             cleanup_payload,
             query_name="integration_salesforce_delete_test_opportunity",
             context=(
@@ -98,7 +111,7 @@ async def test_execute_salesforce_opportunity_insert_with_cleanup(
         )
         print_execution_details(
             test_name="test_execute_salesforce_opportunity_insert_with_cleanup.cleanup",
-            connection_name="salesforce-demo-3841cee8-20260709-2149",
+            connection_name=connection_name,
             payload=cleanup_payload,
             result=cleanup_result,
         )

@@ -27,6 +27,30 @@ def live_client() -> MarcoPolo:
     )
 
 
+async def resolve_first_connection_name_by_type(
+    live_client: MarcoPolo,
+    connection_type: str,
+) -> str:
+    result = await live_client.list_connections(
+        context=(
+            f"Resolve the first live {connection_type} connection for SDK "
+            "integration test execution."
+        ),
+        timeout=180,
+    )
+    for connection in result.connections:
+        if connection.connection_type == connection_type:
+            return connection.name
+    raise AssertionError(
+        f"No live {connection_type} connection is available for integration testing."
+    )
+
+
+def build_query_file_path(connection_name: str, relative_path: str) -> str:
+    cleaned_relative_path = relative_path.strip().lstrip("/")
+    return f"connections/{connection_name}/queries/{cleaned_relative_path}"
+
+
 def print_execution_details(
     *,
     test_name: str,
