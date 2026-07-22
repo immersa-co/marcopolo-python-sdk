@@ -11,7 +11,7 @@ import httpx
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from mcp.shared._httpx_utils import create_mcp_http_client
-from mcp.types import CallToolResult, ListToolsResult
+from mcp.types import CallToolResult, ListToolsResult, ReadResourceResult
 
 
 class BearerTokenAuth(httpx.Auth):
@@ -76,6 +76,12 @@ class MarcoPoloMCPTransport:
 
         async with self.session() as session:
             return await session.call_tool(name, arguments)
+
+    async def read_resource(self, uri: str) -> ReadResourceResult:
+        """Read a named MCP resource."""
+
+        async with self.session() as session:
+            return await session.read_resource(uri)
 
     async def workspace_shell(
         self, command: str, context: str, timeout: int | None = None

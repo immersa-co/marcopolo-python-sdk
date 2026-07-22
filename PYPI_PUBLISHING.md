@@ -9,7 +9,7 @@ GitHub Actions trusted publishing.
 - Distribution name on PyPI: `marcopolo-sdk`
 - Import package in user code: `marcopolo`
 - Release trigger: publish a GitHub release from a version tag such as
-  `v0.1.1`
+  `v0.2.0`
 
 ## One-time PyPI setup
 
@@ -41,8 +41,8 @@ publisher flow rather than performing a manual first upload.
 3. Create and push a version tag:
 
 ```bash
-git tag -a v0.1.1 -m "v0.1.1"
-git push origin v0.1.1
+git tag -a v0.2.0 -m "v0.2.0"
+git push origin v0.2.0
 ```
 
 4. Create a GitHub release for that tag and mark it published.

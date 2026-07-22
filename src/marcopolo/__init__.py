@@ -2,18 +2,21 @@
 
 from marcopolo._version import __version__
 from marcopolo.client import MarcoPolo
-from marcopolo.execution import (
-    ConnectionListResult,
-    ConnectionSummary,
-    ExecutionError,
-    ExecutionResult,
-)
+from marcopolo.errors import ExecutionError, QueryFileAuthoringError, ToolResultError
 from marcopolo.mcp_transport import MarcoPoloMCPTransport
-from marcopolo.query_files import (
+from marcopolo.models import (
     AuthoredQueryFile,
-    MarcoPoloQueryFileAuthor,
+    ConnectionListResult,
+    ConnectionSetupResult,
+    ConnectionSummary,
+    DemoConnectionInstallResult,
+    ExecutionResult,
+    PayloadFormat,
     PreparedQueryFile,
+    ResourceTextResult,
+    WorkspaceShellResult,
 )
+from marcopolo.query_files import MarcoPoloQueryFileAuthor
 
 __all__ = [
     "MarcoPolo",
@@ -25,5 +28,12 @@ __all__ = [
     "MarcoPoloQueryFileAuthor",
     "PreparedQueryFile",
     "AuthoredQueryFile",
+    "PayloadFormat",
+    "ConnectionSetupResult",
+    "DemoConnectionInstallResult",
+    "ResourceTextResult",
+    "ToolResultError",
+    "WorkspaceShellResult",
+    "QueryFileAuthoringError",
     "__version__",
 ]

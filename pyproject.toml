@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "marcopolo-sdk"
-version = "0.1.1"
+version = "0.2.0"
 description = "Python SDK for executing MarcoPolo MCP data operations."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -29,6 +29,7 @@ dependencies = [
 dev = [
   "build>=1.2.2",
   "pytest>=8.3.0",
+  "pytest-asyncio>=0.24.0",
   "ruff>=0.5.0",
   "twine>=5.1.1",
 ]
@@ -46,6 +47,11 @@ exclude = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+asyncio_mode = "auto"
+addopts = '-m "not live"'
+markers = [
+  "live: requires a real MarcoPolo environment and explicit opt-in",
+]
 
 [tool.ruff]
 target-version = "py311"
