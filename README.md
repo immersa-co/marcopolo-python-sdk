@@ -123,7 +123,7 @@ Behavior:
 - writes a durable remote query file under
   `connections/<connection_name>/queries/`
 - executes it with `connection query <connection_name> --file <query_file> --json`
-- always requests the full result set by passing `--sample-rows -1` internally
+- requests inline rows by passing `--include-results` internally
 - normalizes the result into `ExecutionResult`
 
 ### `execute_query_file()`

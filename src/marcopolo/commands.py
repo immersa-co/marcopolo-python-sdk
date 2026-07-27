@@ -24,8 +24,7 @@ def build_connection_query_command(
         "--file",
         shlex.quote(query_file),
         "--json",
-        "--sample-rows",
-        "-1",
+        "--include-results",
     ]
     if params is not None:
         command_parts.extend(["--params-json", shlex.quote(json.dumps(params))])
