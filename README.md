@@ -62,7 +62,7 @@ This repository is set up for GitHub Actions based PyPI trusted publishing.
 High-level flow:
 
 1. Configure the one-time trusted publisher on PyPI for this repository.
-2. Push a version tag such as `v0.2.0`.
+2. Push a version tag such as `v0.1.2`.
 3. Create a GitHub release from that tag.
 4. The `publish-pypi.yml` workflow builds the package and uploads it to PyPI.
 
