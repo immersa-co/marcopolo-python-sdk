@@ -9,7 +9,7 @@ The initial public surface is intentionally small:
 - one async top-level API: `execute()`
 - one async lower-level helper: `execute_query_file()`
 - one async helper to install a hosted demo source: `install_demo_connection()`
-- one async helper to start a native connection workflow: `start_connection_setup()`
+- one async helper to start an embedded connection workflow: `start_connection_setup()`
 - one async helper to run arbitrary workspace commands: `workspace_shell()`
 - one async helper to read text resources: `read_resource_text()`
 - internal handling for remote query-file authoring under
@@ -165,8 +165,19 @@ async def start_connection_setup(
 ) -> ConnectionSetupResult
 ```
 
-Use this to launch a native MarcoPolo connection setup workflow for a given
-connector type.
+Use this to fetch the embedded MCP app payload for a MarcoPolo connection setup
+workflow for a given connector type.
+
+The result includes:
+
+- `resource_uri`
+- `tool_result`
+- `tool_output`
+- `widget_meta`
+- `status_url`
+
+This is intended for applications that want to host the MarcoPolo
+`connection_setup` MCP app inside their own UI container.
 
 ### `workspace_shell()`
 
