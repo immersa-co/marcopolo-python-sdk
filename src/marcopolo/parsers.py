@@ -155,28 +155,18 @@ def parse_install_demo_connection_result(tool_result: Any) -> DemoConnectionInst
 
 
 def parse_connection_setup_result(tool_result: Any) -> ConnectionSetupResult:
-    """Normalize `connection_setup` output into a typed result."""
+    """Normalize `connection_setup` output into an embedded app payload."""
 
     raw_tool_result = mapping(tool_result, error_type=ToolResultError)
     payload = parse_tool_payload(raw_tool_result)
     if not payload:
         raise ToolResultError("MarcoPolo connection_setup did not return a usable payload.")
-
-    next_actions = [
-        action
-        for action in payload.get("next_actions", [])
-        if isinstance(action, str) and action
-    ]
     return ConnectionSetupResult(
-        url=_required_string(payload, "url"),
-        workflow_type=_optional_string(payload, "workflow_type"),
-        message=_optional_string(payload, "message"),
-        setup_session_id=_optional_string(payload, "setup_session_id"),
-        status=_optional_string(payload, "status"),
+        resource_uri="ui://connection-setup/app.html",
+        tool_result=raw_tool_result,
+        tool_output=payload,
+        widget_meta=_parse_tool_meta(raw_tool_result),
         status_url=_optional_string(payload, "status_url"),
-        next_actions=next_actions,
-        raw_payload=payload,
-        raw_tool_result=raw_tool_result,
     )
 
 
@@ -232,7 +222,7 @@ def mapping(value: Any, *, error_type: type[Exception] = ToolResultError) -> dic
     if isinstance(value, dict):
         return value
     if hasattr(value, "model_dump"):
-        dumped = value.model_dump(mode="python")
+        dumped = value.model_dump(mode="python", by_alias=True)
         if isinstance(dumped, dict):
             return dumped
     raise error_type("Tool returned an unsupported result shape.")
@@ -282,6 +272,13 @@ def parse_tool_payload(tool_result: dict[str, Any]) -> dict[str, Any]:
             if isinstance(parsed, dict):
                 return parsed
 
+    return {}
+
+
+def _parse_tool_meta(tool_result: dict[str, Any]) -> dict[str, Any]:
+    meta = tool_result.get("_meta")
+    if isinstance(meta, dict):
+        return meta
     return {}
 
 

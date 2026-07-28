@@ -194,7 +194,7 @@ class MarcoPolo:
         *,
         context: str,
     ) -> ConnectionSetupResult:
-        """Start a native MarcoPolo connection setup workflow."""
+        """Start an embedded MarcoPolo connection setup workflow."""
 
         tool_result = await self.transport().call_tool(
             "connection_setup",

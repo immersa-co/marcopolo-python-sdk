@@ -59,17 +59,13 @@ class DemoConnectionInstallResult:
 
 @dataclass(frozen=True, slots=True)
 class ConnectionSetupResult:
-    """Normalized result from MarcoPolo's `connection_setup` tool."""
+    """Embedded MCP app payload from MarcoPolo's `connection_setup` tool."""
 
-    url: str
-    workflow_type: str | None
-    message: str | None
-    setup_session_id: str | None
-    status: str | None
+    resource_uri: str
+    tool_result: dict[str, Any]
+    tool_output: dict[str, Any]
+    widget_meta: dict[str, Any]
     status_url: str | None
-    next_actions: list[str]
-    raw_payload: dict[str, Any]
-    raw_tool_result: dict[str, Any]
 
 
 @dataclass(frozen=True, slots=True)
